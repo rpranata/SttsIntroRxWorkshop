@@ -1,0 +1,96 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+android {
+    compileSdkVersion versions.compileSdk
+    buildToolsVersion versions.buildTools
+
+    defaultConfig {
+        minSdkVersion versions.minSdk
+        targetSdkVersion versions.targetSdk
+
+        applicationId "stts.rxworkshop"
+        versionCode 1
+        versionName "1.0"
+
+        multiDexEnabled true
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    aaptOptions {
+        noCompress 'apk'
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+
+        release {
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    dataBinding {
+        enabled = true
+    }
+
+    // Issues on AS3. Need to watch
+    // https://github.com/robolectric/robolectric/issues/3333#issuecomment-324300418
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation libraries.kotlinStd
+
+    // Support Libraries https://developer.android.com/topic/libraries/support-library/packages.html
+    implementation libraries.supportArchitectureCommon
+    implementation libraries.supportArchitectureExtensions
+    implementation libraries.supportArchitectureStreams
+    implementation libraries.supportAppCompat
+    implementation libraries.supportDesign
+    implementation libraries.constraintLayout
+
+    // Timber (For Logging); https://github.com/JakeWharton/timber
+    implementation libraries.timber
+
+    // RX-Java and RX-Android; https://github.com/ReactiveX/RxAndroid
+    implementation libraries.rxJava2
+    implementation libraries.rxAndroid2
+    implementation libraries.rxProguard
+    implementation libraries.rxBinding
+    implementation libraries.rxBinding2Kotlin
+    implementation libraries.rxBinding2RecyclerView
+
+    implementation libraries.rxKotlin
+    implementation libraries.rxRelay2
+    implementation libraries.rxJavaInterop
+
+    // DataBinding for Kotlin
+    kapt libraries.databinding
+
+    // Dagger2
+    implementation libraries.dagger
+    implementation libraries.daggerAndroid
+    implementation libraries.daggerAndroidSupport
+    kapt libraries.daggerCompiler
+    kapt libraries.daggerAndroidCompiler
+
+    testImplementation libraries.junit
+
+    androidTestImplementation libraries.supportTestRunner
+    androidTestImplementation libraries.espressoCore
+}
