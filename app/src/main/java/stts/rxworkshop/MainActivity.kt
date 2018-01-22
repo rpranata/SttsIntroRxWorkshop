@@ -24,7 +24,11 @@ class RegisterViewData(
   @JvmField val isSignUpButtonEnabled: ObservableBoolean = ObservableBoolean(true)
 )
 
-class MainActivity : AppCompatActivity(), CanValidateEmail, CanValidatePassword {
+class MainActivity :
+  AppCompatActivity(),
+  CanValidateEmail,
+  CanValidatePassword,
+  CompoundButton.OnCheckedChangeListener {
 
   private lateinit var binding: ActivityMainBinding
 
@@ -41,6 +45,7 @@ class MainActivity : AppCompatActivity(), CanValidateEmail, CanValidatePassword 
 
     binding.email.addTextChangedListener(EmailTextChangedListener(this))
     binding.password.addTextChangedListener(PasswordTextChangedListener(this))
+    binding.tosAcceptanceCheckbox.setOnCheckedChangeListener(this)
   }
 
   override fun onDestroy() {
@@ -74,9 +79,13 @@ class MainActivity : AppCompatActivity(), CanValidateEmail, CanValidatePassword 
     toggleSignInButton()
   }
 
+  override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
+    toggleSignInButton()
+  }
+
   private fun toggleSignInButton() {
     registerViewData.isSignUpButtonEnabled.set(
-      isEmailValid && isPasswordValid
+      isEmailValid && isPasswordValid && binding.tosAcceptanceCheckbox.isChecked
     )
   }
 
