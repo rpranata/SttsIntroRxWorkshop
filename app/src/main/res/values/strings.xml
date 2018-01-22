@@ -5,4 +5,7 @@
     <string name="signup_password_hint">Password</string>
     <string name="signup_button_title">Signup</string>
     <string name="signup_tos_acceptance">I agree to the Terms of Service</string>
+
+    <string name="validator_invalid_email">Please enter a valid email</string>
+    <string name="validator_invalid_password">Password must contain at least a character and a number</string>
 </resources>
