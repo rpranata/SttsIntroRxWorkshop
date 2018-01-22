@@ -4,6 +4,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <data>
+        <import type="stts.rxworkshop.RegisterViewData"/>
+
+        <variable
+            name="data"
+            type="RegisterViewData"/>
+    </data>
+
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -79,6 +87,7 @@
             android:layout_height="wrap_content"
             android:id="@+id/signup"
             android:text="@string/signup_button_title"
+            android:enabled="@{data.isSignUpButtonEnabled}"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tos_acceptance_checkbox"
