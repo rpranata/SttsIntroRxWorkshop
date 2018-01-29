@@ -9,6 +9,7 @@ import io.reactivex.Observable
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.plusAssign
+import io.reactivex.android.schedulers.AndroidSchedulers
 import stts.rxworkshop.common.toLiveData
 import stts.rxworkshop.validators.AlphanumericValidator
 import stts.rxworkshop.validators.EmailValidator
@@ -52,7 +53,69 @@ class RegisterViewModel : ViewModel() {
   fun initialize(view: RegistrationView) {
     compositeDisposable.clear()
 
-    // TODO: Define all subscriptions
+    val email = view
+      .email
+      .filter {
+        val data = data.value ?: return@filter true
+        data.emailData != UnknownEmail || !TextUtils.isEmpty(it)
+      }
+      .map { email ->
+        if (EmailValidator.validate(email)) ValidEmail(email) else InvalidEmail
+      }
+      .doOnNext {
+        Log.e(TAG, "Email data: $it")
+      }
+      .publish()
+      .autoConnect()
+
+    compositeDisposable += email
+      .observeOn(AndroidSchedulers.mainThread())
+      .subscribe {
+        val newData = data.value!!.copy(emailData = it)
+        data.postValue(newData)
+      }
+
+    val password = view
+      .password
+      .filter {
+        val data = data.value ?: return@filter true
+        data.passwordData != UnknownPassword || !TextUtils.isEmpty(it)
+      }
+      .map { password ->
+        if (AlphanumericValidator.validate(password))
+          ValidPassword(password)
+        else
+          InvalidPassword
+      }
+      .doOnNext {
+        Log.e(TAG, "Password data: $it")
+      }
+      .publish()
+      .autoConnect()
+
+    compositeDisposable += password
+      .observeOn(AndroidSchedulers.mainThread())
+      .subscribe {
+        val newData = data.value!!.copy(passwordData = it)
+        Log.e(TAG, "Password NEW data: $newData")
+        data.value = newData
+      }
+
+    compositeDisposable += Observables
+      .combineLatest(
+        email,
+        password,
+        view.tos
+      ) { emailData, passwordData, tos ->
+        emailData is ValidEmail && passwordData is ValidPassword && tos
+      }
+      .distinctUntilChanged()
+      .observeOn(AndroidSchedulers.mainThread())
+      .subscribe {
+        val newData = data.value!!.copy(isComplete = it)
+        data.value = newData
+      }
+
   }
 
   fun register(): LiveData<RegistrationResult> {
@@ -72,7 +135,7 @@ class RegisterViewModel : ViewModel() {
     )
 
     return Observable
-      .timer(5, TimeUnit.SECONDS)
+      .timer(2, TimeUnit.SECONDS)
       .map {
         SuccessfulRegistration("{\"result\": \"success\"}") as RegistrationResult
       }
