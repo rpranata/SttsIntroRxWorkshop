@@ -1,51 +1,69 @@
 package stts.rxworkshop
 
+import android.arch.lifecycle.Observer
+import android.arch.lifecycle.ViewModelProviders
 import android.databinding.DataBindingUtil
 import android.databinding.ObservableBoolean
+import android.databinding.ObservableField
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import android.text.Editable
-import android.text.TextUtils
-import android.text.TextWatcher
-import android.widget.CompoundButton
+import android.util.Log
+import android.widget.Toast
+import com.jakewharton.rxbinding2.widget.RxCompoundButton
+import com.jakewharton.rxbinding2.widget.RxTextView
+import io.reactivex.Observable
 import stts.rxworkshop.databinding.ActivityMainBinding
-import stts.rxworkshop.validators.AlphanumericValidator
-import stts.rxworkshop.validators.EmailValidator
+import stts.rxworkshop.di.Injection
 
-interface CanValidateEmail {
-  fun validateEmail()
-}
-
-interface CanValidatePassword {
-  fun validatePassword()
+interface RegisterViewHandler {
+  fun register()
 }
 
 class RegisterViewData(
+  @JvmField val emailError: ObservableField<String> = ObservableField(""),
+  @JvmField val passwordError: ObservableField<String> = ObservableField(""),
   @JvmField val isSignUpButtonEnabled: ObservableBoolean = ObservableBoolean(true)
 )
 
 class MainActivity :
   AppCompatActivity(),
-  CanValidateEmail,
-  CanValidatePassword,
-  CompoundButton.OnCheckedChangeListener {
+  RegistrationView,
+  RegisterViewHandler {
+
+  private companion object {
+    const val TAG = "RegisterActivity"
+  }
+
+  // TODO: Inject this
+  private lateinit var viewModel: RegisterViewModel
 
   private lateinit var binding: ActivityMainBinding
 
   private val registerViewData = RegisterViewData()
-
-  private var isEmailValid = false
-  private var isPasswordValid = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
     binding.data = registerViewData
+    binding.handler = this
 
-    binding.email.addTextChangedListener(EmailTextChangedListener(this))
-    binding.password.addTextChangedListener(PasswordTextChangedListener(this))
-    binding.tosAcceptanceCheckbox.setOnCheckedChangeListener(this)
+    val viewModelFactory = Injection.provideViewModelFactory()
+    viewModel = ViewModelProviders
+      .of(this, viewModelFactory)
+      .get(RegisterViewModel::class.java)
+    viewModel.initialize(this)
+  }
+
+  override fun onStart() {
+    super.onStart()
+    viewModel.data.observe(
+      this,
+      Observer<RegistrationData> { data ->
+        data ?: return@Observer
+        updateUI(data)
+      }
+    )
   }
 
   override fun onDestroy() {
@@ -53,76 +71,62 @@ class MainActivity :
     binding.unbind()
   }
 
-  override fun validateEmail() {
-    val email = binding.email.text
-    if (!TextUtils.isEmpty(email) && EmailValidator.validate(email)) {
-      binding.emailControl.isErrorEnabled = false
-    } else {
-      binding.emailControl.isErrorEnabled = true
-      binding.emailControl.error = getString(R.string.validator_invalid_email)
-    }
+  override val email: Observable<CharSequence>
+    get() = RxTextView.textChanges(binding.email)
 
-    isEmailValid = !binding.emailControl.isErrorEnabled
-    toggleSignInButton()
-  }
+  override val password: Observable<CharSequence>
+    get() = RxTextView.textChanges(binding.password)
 
-  override fun validatePassword() {
-    val password = binding.password.text
-    if (!TextUtils.isEmpty(password) && AlphanumericValidator.validate(password)) {
-      binding.passwordControl.isErrorEnabled = false
-    } else {
-      binding.passwordControl.isErrorEnabled = true
-      binding.passwordControl.error = getString(R.string.validator_invalid_password)
-    }
+  override val tos: Observable<Boolean>
+    get() = RxCompoundButton.checkedChanges(binding.tosAcceptanceCheckbox!!)
 
-    isPasswordValid = !binding.passwordControl.isErrorEnabled
-    toggleSignInButton()
-  }
+  override fun register() {
+    viewModel.register().observe(
+      this,
+      Observer<RegistrationResult> { data ->
+        data ?: return@Observer
 
-  override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
-    toggleSignInButton()
-  }
+        when (data) {
+          is SuccessfulRegistration -> {
+            Toast
+              .makeText(
+                this,
+                "Registration successful with ${data.response}",
+                Toast.LENGTH_LONG
+              )
+              .show()
+          }
+          FailedRegistration -> {
+            Toast
+              .makeText(
+                this,
+                "Registration failure",
+                Toast.LENGTH_LONG
+              )
+              .show()
+          }
 
-  private fun toggleSignInButton() {
-    registerViewData.isSignUpButtonEnabled.set(
-      isEmailValid && isPasswordValid && binding.tosAcceptanceCheckbox.isChecked
+        }
+      }
     )
+
   }
 
-}
+  private fun updateUI(data: RegistrationData) {
+    Log.e(TAG, "On data changed -> $data")
 
-private class EmailTextChangedListener(
-  private val validator: CanValidateEmail
-) : TextWatcher {
+    registerViewData.emailError.set(
+      if (data.emailData == InvalidEmail) getString(R.string.validator_invalid_email) else ""
+    )
 
-  override fun afterTextChanged(email: Editable?) {
-    validator.validateEmail()
-  }
+    registerViewData.passwordError.set(
+      if (data.passwordData == InvalidPassword)
+        getString(R.string.validator_invalid_password)
+      else
+        ""
+    )
 
-  override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-    // No op
-  }
-
-  override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-    // No op
-  }
-
-}
-
-private class PasswordTextChangedListener(
-  private val validator: CanValidatePassword
-) : TextWatcher {
-
-  override fun afterTextChanged(email: Editable?) {
-    validator.validatePassword()
-  }
-
-  override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-    // No op
-  }
-
-  override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-    // No op
+    registerViewData.isSignUpButtonEnabled.set(data.isComplete)
   }
 
 }
